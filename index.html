@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda de visitas — apartamentos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EFE8;
+    --paper-2:#E8E5DB;
+    --ink:#1B2A3A;
+    --ink-soft:#4A5A6A;
+    --ink-faint:#8B96A2;
+    --line: rgba(27,42,58,0.16);
+    --line-strong: rgba(27,42,58,0.32);
+    --ochre:#B9862B;
+    --ochre-soft:#EFE1C4;
+    --teal:#3E7C74;
+    --teal-soft:#DCEAE7;
+    --red:#A5453A;
+    --red-soft:#F2E0DC;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:40px 24px 100px;}
+
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:18px;margin-bottom:28px;
+  }
+  header h1{
+    font-size:26px;font-weight:600;margin:0 0 4px;letter-spacing:-0.01em;
+  }
+  header p{margin:0;color:var(--ink-soft);font-size:14px;}
+  .stats{display:flex;gap:22px;text-align:right;}
+  .stat{font-family:'IBM Plex Mono',monospace;}
+  .stat b{display:block;font-size:20px;font-weight:500;}
+  .stat span{font-size:11px;color:var(--ink-soft);}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    border:1px solid var(--line-strong);background:transparent;color:var(--ink-soft);
+    padding:6px 12px;border-radius:20px;font-size:12.5px;cursor:pointer;font-family:inherit;
+  }
+  .chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  button.primary{
+    background:var(--ink);color:var(--paper);border:none;padding:10px 18px;
+    font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;border-radius:var(--radius);
+  }
+  button.primary:hover{background:#0e1a26;}
+
+  .empty{
+    border:1px dashed var(--line-strong);padding:48px 24px;text-align:center;color:var(--ink-soft);
+  }
+  .empty h3{color:var(--ink);margin:0 0 6px;font-weight:600;}
+
+  .group-label{
+    font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);
+    margin:28px 0 10px;font-family:'IBM Plex Mono',monospace;
+  }
+  .group-label:first-of-type{margin-top:0;}
+
+  .visit{
+    display:grid;grid-template-columns:70px 1fr auto;gap:16px;align-items:start;
+    padding:16px 4px;border-bottom:1px solid var(--line);cursor:pointer;
+  }
+  .visit:hover{background:rgba(27,42,58,0.03);}
+  .datebox{text-align:left;font-family:'IBM Plex Mono',monospace;}
+  .datebox .day{font-size:22px;font-weight:500;line-height:1;}
+  .datebox .mon{font-size:11px;color:var(--ink-soft);text-transform:uppercase;}
+  .datebox .time{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+
+  .visit .main .addr{font-size:16px;font-weight:600;margin:0 0 4px;}
+  .visit .main .meta{font-size:13px;color:var(--ink-soft);display:flex;gap:14px;flex-wrap:wrap;}
+  .visit .main .meta span{display:inline-flex;align-items:center;gap:4px;}
+  .visit .main .notes{font-size:13px;color:var(--ink-soft);margin-top:6px;max-width:520px;}
+
+  .status-pill{
+    font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;font-weight:500;height:fit-content;
+  }
+  .status-agendado{background:var(--ochre-soft);color:#7A5A19;}
+  .status-visitado{background:var(--teal-soft);color:#28524C;}
+  .status-descartado{background:var(--red-soft);color:#7A322A;}
+  .status-favorito{background:#1B2A3A;color:var(--paper);}
+
+  .rating{display:flex;gap:2px;margin-top:6px;}
+  .rating i{font-style:normal;font-size:13px;color:var(--line-strong);}
+  .rating i.on{color:var(--ochre);}
+
+  /* modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(27,42,58,0.45);
+    display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;
+  }
+  .modal{
+    background:var(--paper);border:1px solid var(--ink);max-width:560px;width:100%;padding:28px;border-radius:var(--radius);
+  }
+  .modal h2{margin:0 0 20px;font-size:19px;font-weight:600;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px;font-weight:500;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  input, textarea, select{
+    width:100%;border:1px solid var(--line-strong);background:#fff;color:var(--ink);
+    padding:9px 10px;font-size:14px;font-family:inherit;border-radius:var(--radius);
+  }
+  textarea{resize:vertical;min-height:60px;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--ochre);outline-offset:0;}
+  .star-picker{display:flex;gap:4px;font-size:22px;}
+  .star-picker i{cursor:pointer;color:var(--line-strong);font-style:normal;}
+  .star-picker i.on{color:var(--ochre);}
+  .modal-actions{display:flex;justify-content:space-between;margin-top:22px;align-items:center;}
+  .modal-actions .left button{
+    background:transparent;border:1px solid var(--red);color:var(--red);padding:9px 14px;
+    font-size:13px;border-radius:var(--radius);cursor:pointer;font-family:inherit;
+  }
+  .modal-actions .right{display:flex;gap:8px;}
+  .ghost-btn{
+    background:transparent;border:1px solid var(--line-strong);color:var(--ink);padding:9px 16px;
+    font-size:14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;
+  }
+  .err{color:var(--red);font-size:12px;margin-top:4px;display:none;}
+  .err.show{display:block;}
+
+  @media (max-width:520px){
+    .row2, .row3{grid-template-columns:1fr;}
+    .visit{grid-template-columns:56px 1fr;}
+    .status-pill{grid-column:2;justify-self:start;margin-top:6px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Agenda de visitas</h1>
+      <p>Controle das visitas de apartamentos para alugar</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stat-agendado">0</b><span>agendadas</span></div>
+      <div class="stat"><b id="stat-visitado">0</b><span>visitadas</span></div>
+      <div class="stat"><b id="stat-favorito">0</b><span>favoritas</span></div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="filters" id="filters">
+      <button class="chip active" data-filter="todas">Todas</button>
+      <button class="chip" data-filter="agendado">Agendadas</button>
+      <button class="chip" data-filter="visitado">Visitadas</button>
+      <button class="chip" data-filter="favorito">Favoritas</button>
+      <button class="chip" data-filter="descartado">Descartadas</button>
+    </div>
+    <button class="primary" id="new-btn">+ Nova visita</button>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<div class="overlay" id="overlay" style="display:none;">
+  <div class="modal">
+    <h2 id="modal-title">Nova visita</h2>
+    <form id="visit-form">
+      <input type="hidden" id="visit-id">
+      <div class="field">
+        <label>Endereço</label>
+        <input type="text" id="f-addr" placeholder="Rua, número, bairro, cidade">
+        <div class="err" id="err-addr">Informe o endereço.</div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Data</label>
+          <input type="date" id="f-date">
+          <div class="err" id="err-date">Informe a data.</div>
+        </div>
+        <div class="field">
+          <label>Horário</label>
+          <input type="time" id="f-time">
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label>Aluguel (R$)</label>
+          <input type="number" id="f-price" placeholder="2500" min="0">
+        </div>
+        <div class="field">
+          <label>Área (m²)</label>
+          <input type="number" id="f-area" placeholder="55" min="0">
+        </div>
+        <div class="field">
+          <label>Quartos</label>
+          <input type="number" id="f-rooms" placeholder="2" min="0">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Contato (corretor/proprietário)</label>
+          <input type="text" id="f-contact" placeholder="Nome e telefone">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="agendado">Agendado</option>
+            <option value="visitado">Visitado</option>
+            <option value="favorito">Favorito</option>
+            <option value="descartado">Descartado</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Avaliação</label>
+        <div class="star-picker" id="star-picker">
+          <i data-v="1">★</i><i data-v="2">★</i><i data-v="3">★</i><i data-v="4">★</i><i data-v="5">★</i>
+        </div>
+      </div>
+      <div class="field">
+        <label>Anotações</label>
+        <textarea id="f-notes" placeholder="Iluminação, barulho, condomínio, vaga de garagem..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <div class="left"><button type="button" id="delete-btn" style="display:none;">Excluir</button></div>
+        <div class="right">
+          <button type="button" class="ghost-btn" id="cancel-btn">Cancelar</button>
+          <button type="submit" class="primary">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// 1) Cole aqui a configuração do SEU projeto Firebase (Configurações do projeto > Seus apps > SDK setup).
+const firebaseConfig = {
+  apiKey: "AIzaSyB2PDeowCVJptRxU5JJL6xlHMS4Do2zAy0",
+  authDomain: "agenda-apartamento-50dc0.firebaseapp.com",
+  projectId: "agenda-apartamento-50dc0",
+  storageBucket: "agenda-apartamento-50dc0.firebasestorage.app",
+  messagingSenderId: "528058063186",
+  appId: "1:528058063186:web:a2958d2c3df1742ce2028b",
+  measurementId: "G-993CMPTMES"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+// Todos os dados ficam num único documento — simples e suficiente para uso pessoal.
+const docRef = doc(db, "agenda-apartamento", "visitas");
+
+let visits = [];
+let currentFilter = 'todas';
+let synced = false;
+
+const monthsPt = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+// Fica ouvindo o Firestore em tempo real: qualquer aparelho que salvar, todos os outros atualizam sozinhos.
+onSnapshot(docRef, (snap)=>{
+  visits = snap.exists() ? (snap.data().items || []) : [];
+  synced = true;
+  render();
+}, (err)=>{
+  console.error('Erro ao conectar ao Firebase', err);
+  document.getElementById('list').innerHTML = `<div class="empty"><h3>Não foi possível conectar.</h3><p>Confira se o firebaseConfig no arquivo está preenchido corretamente e se o Firestore está ativado.</p></div>`;
+});
+
+async function saveVisits(){
+  try{
+    await setDoc(docRef, { items: visits });
+  }catch(e){
+    console.error('Erro ao salvar', e);
+    alert('Não foi possível salvar. Verifique sua conexão com a internet.');
+  }
+}
+
+function fmtMoney(v){
+  if(v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  if(isNaN(n)) return null;
+  return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL', maximumFractionDigits:0});
+}
+
+function render(){
+  document.getElementById('stat-agendado').textContent = visits.filter(v=>v.status==='agendado').length;
+  document.getElementById('stat-visitado').textContent = visits.filter(v=>v.status==='visitado').length;
+  document.getElementById('stat-favorito').textContent = visits.filter(v=>v.status==='favorito').length;
+
+  const list = document.getElementById('list');
+  let filtered = currentFilter === 'todas' ? visits : visits.filter(v=>v.status===currentFilter);
+  filtered = [...filtered].sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+
+  if(filtered.length === 0){
+    list.innerHTML = `<div class="empty"><h3>Nenhuma visita por aqui.</h3><p>Cadastre a próxima visita de apartamento para começar.</p></div>`;
+    return;
+  }
+
+  let html = '';
+  let lastMonth = null;
+  filtered.forEach(v=>{
+    const d = v.date ? new Date(v.date+'T00:00:00') : null;
+    const monthKey = d ? `${d.getFullYear()}-${d.getMonth()}` : 'sem-data';
+    if(monthKey !== lastMonth){
+      const label = d ? `${d.toLocaleDateString('pt-BR',{month:'long'})} de ${d.getFullYear()}` : 'Sem data definida';
+      html += `<div class="group-label">${label}</div>`;
+      lastMonth = monthKey;
+    }
+    const price = fmtMoney(v.price);
+    const meta = [];
+    if(price) meta.push(`<span><i class="ti"></i>${price}</span>`);
+    if(v.area) meta.push(`<span>${v.area} m²</span>`);
+    if(v.rooms) meta.push(`<span>${v.rooms} quarto${v.rooms==1?'':'s'}</span>`);
+    if(v.contact) meta.push(`<span>${escapeHtml(v.contact)}</span>`);
+
+    const stars = v.rating ? `<div class="rating">${[1,2,3,4,5].map(i=>`<i class="${i<=v.rating?'on':''}">★</i>`).join('')}</div>` : '';
+    const statusLabel = {agendado:'Agendado', visitado:'Visitado', favorito:'Favorito', descartado:'Descartado'}[v.status] || v.status;
+
+    html += `
+    <div class="visit" data-id="${v.id}">
+      <div class="datebox">
+        <div class="day">${d ? String(d.getDate()).padStart(2,'0') : '--'}</div>
+        <div class="mon">${d ? monthsPt[d.getMonth()] : ''}</div>
+        ${v.time ? `<div class="time">${v.time}</div>` : ''}
+      </div>
+      <div class="main">
+        <p class="addr">${escapeHtml(v.address) || 'Sem endereço'}</p>
+        <div class="meta">${meta.join('')}</div>
+        ${v.notes ? `<div class="notes">${escapeHtml(v.notes)}</div>` : ''}
+        ${stars}
+      </div>
+      <div class="status-pill status-${v.status}">${statusLabel}</div>
+    </div>`;
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.visit').forEach(el=>{
+    el.addEventListener('click', ()=> openModal(el.dataset.id));
+  });
+}
+
+function escapeHtml(s){
+  if(!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+let editingId = null;
+let currentRating = 0;
+
+function openModal(id){
+  const overlay = document.getElementById('overlay');
+  const form = document.getElementById('visit-form');
+  form.reset();
+  clearErrors();
+  currentRating = 0;
+
+  if(id){
+    const v = visits.find(x=>x.id===id);
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Editar visita';
+    document.getElementById('visit-id').value = v.id;
+    document.getElementById('f-addr').value = v.address || '';
+    document.getElementById('f-date').value = v.date || '';
+    document.getElementById('f-time').value = v.time || '';
+    document.getElementById('f-price').value = v.price || '';
+    document.getElementById('f-area').value = v.area || '';
+    document.getElementById('f-rooms').value = v.rooms || '';
+    document.getElementById('f-contact').value = v.contact || '';
+    document.getElementById('f-status').value = v.status || 'agendado';
+    document.getElementById('f-notes').value = v.notes || '';
+    currentRating = v.rating || 0;
+    document.getElementById('delete-btn').style.display = 'inline-block';
+  } else {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Nova visita';
+    document.getElementById('delete-btn').style.display = 'none';
+  }
+  updateStars();
+  overlay.style.display = 'flex';
+}
+
+function closeModal(){
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function clearErrors(){
+  document.getElementById('err-addr').classList.remove('show');
+  document.getElementById('err-date').classList.remove('show');
+}
+
+function updateStars(){
+  document.querySelectorAll('#star-picker i').forEach(i=>{
+    i.classList.toggle('on', Number(i.dataset.v) <= currentRating);
+  });
+}
+
+document.getElementById('star-picker').addEventListener('click', (e)=>{
+  if(e.target.tagName === 'I'){
+    const v = Number(e.target.dataset.v);
+    currentRating = (currentRating === v) ? 0 : v;
+    updateStars();
+  }
+});
+
+document.getElementById('new-btn').addEventListener('click', ()=> openModal(null));
+document.getElementById('cancel-btn').addEventListener('click', closeModal);
+document.getElementById('overlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'overlay') closeModal();
+});
+
+document.getElementById('visit-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const addr = document.getElementById('f-addr').value.trim();
+  const date = document.getElementById('f-date').value;
+  let valid = true;
+  clearErrors();
+  if(!addr){ document.getElementById('err-addr').classList.add('show'); valid = false; }
+  if(!date){ document.getElementById('err-date').classList.add('show'); valid = false; }
+  if(!valid) return;
+
+  const data = {
+    id: editingId || ('v'+Date.now()),
+    address: addr,
+    date: date,
+    time: document.getElementById('f-time').value,
+    price: document.getElementById('f-price').value,
+    area: document.getElementById('f-area').value,
+    rooms: document.getElementById('f-rooms').value,
+    contact: document.getElementById('f-contact').value.trim(),
+    status: document.getElementById('f-status').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    rating: currentRating
+  };
+
+  if(editingId){
+    const idx = visits.findIndex(v=>v.id===editingId);
+    visits[idx] = data;
+  } else {
+    visits.push(data);
+  }
+  await saveVisits();
+  closeModal();
+  render();
+});
+
+document.getElementById('delete-btn').addEventListener('click', async ()=>{
+  if(!editingId) return;
+  visits = visits.filter(v=>v.id!==editingId);
+  await saveVisits();
+  closeModal();
+  render();
+});
+
+document.getElementById('filters').addEventListener('click', (e)=>{
+  if(e.target.classList.contains('chip')){
+    document.querySelectorAll('#filters .chip').forEach(c=>c.classList.remove('active'));
+    e.target.classList.add('active');
+    currentFilter = e.target.dataset.filter;
+    render();
+  }
+});
+
+</script>
+</body>
+</html>
